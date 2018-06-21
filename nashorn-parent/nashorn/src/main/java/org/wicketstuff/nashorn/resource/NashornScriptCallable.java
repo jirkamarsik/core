@@ -20,10 +20,7 @@ import java.io.StringReader;
 import java.io.Writer;
 import java.util.concurrent.Callable;
 
-import javax.script.Bindings;
-import javax.script.ScriptContext;
-import javax.script.ScriptEngine;
-import javax.script.SimpleScriptContext;
+import javax.script.*;
 
 import org.apache.wicket.request.resource.IResource.Attributes;
 
@@ -82,8 +79,17 @@ public class NashornScriptCallable implements Callable<Object>
 	public Object call() throws Exception
 	{
 		enableSecurity();
-		ScriptEngine scriptEngine = new NashornScriptEngineFactory()
-			.getScriptEngine(getClassFilter());
+		ScriptEngine scriptEngine = null;
+		for (ScriptEngineFactory scriptEngineFactory : new ScriptEngineManager().getEngineFactories()) {
+			if (scriptEngineFactory.getEngineName().equals("Graal.js")) {
+				scriptEngine = scriptEngineFactory.getScriptEngine();
+				break;
+			}
+		}
+		if (scriptEngine == null) {
+			scriptEngine = new NashornScriptEngineFactory()
+					.getScriptEngine(getClassFilter());
+		}
 		Bindings bindings = scriptEngine.createBindings();
 		SimpleScriptContext scriptContext = new SimpleScriptContext();
 		scriptContext.setWriter(getWriter());

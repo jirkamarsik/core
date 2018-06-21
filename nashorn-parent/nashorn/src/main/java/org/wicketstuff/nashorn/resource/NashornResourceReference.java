@@ -16,21 +16,20 @@
  */
 package org.wicketstuff.nashorn.resource;
 
-import java.io.Writer;
+import java.io.OutputStream;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import javax.script.Bindings;
+import java.util.function.Predicate;
 
 import org.apache.wicket.request.resource.AbstractResource.ResourceResponse;
-import org.apache.commons.io.output.NullWriter;
+import org.apache.commons.io.output.NullOutputStream;
 import org.apache.wicket.request.resource.IResource;
 import org.apache.wicket.request.resource.IResource.Attributes;
 
-import jdk.nashorn.api.scripting.ClassFilter;
-
 import org.apache.wicket.request.resource.ResourceReference;
+
+import org.graalvm.polyglot.Value;
 
 /**
  * Creates a nashorn resource reference to accept java script code from the client side.<br>
@@ -119,7 +118,7 @@ public class NashornResourceReference extends ResourceReference
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			protected void setup(Attributes attributes, Bindings bindings)
+			protected void setup(Attributes attributes, Value bindings)
 			{
 				NashornResourceReference.this.setup(attributes, bindings);
 			}
@@ -131,8 +130,7 @@ public class NashornResourceReference extends ResourceReference
 			}
 
 			@Override
-			protected ClassFilter getClassFilter()
-			{
+			protected Predicate<String> getClassFilter() {
 				return NashornResourceReference.this.getClassFilter();
 			}
 
@@ -143,15 +141,15 @@ public class NashornResourceReference extends ResourceReference
 			}
 
 			@Override
-			protected Writer getWriter()
+			protected OutputStream getOutputStream()
 			{
-				return NashornResourceReference.this.getWriter();
+				return NashornResourceReference.this.getOutputStream();
 			}
 
 			@Override
-			protected Writer getErrorWriter()
+			protected OutputStream getErrorStream()
 			{
-				return NashornResourceReference.this.getErrorWriter();
+				return NashornResourceReference.this.getErrorStream();
 			}
 		};
 	}
@@ -176,7 +174,7 @@ public class NashornResourceReference extends ResourceReference
 	 * @param bindings
 	 *            the bindings to add java objects to
 	 */
-	protected void setup(Attributes attributes, Bindings bindings)
+	protected void setup(Attributes attributes, Value bindings)
 	{
 		// NOOP
 	}
@@ -186,41 +184,34 @@ public class NashornResourceReference extends ResourceReference
 	 * 
 	 * @return the class filter to apply to the scripting engine
 	 */
-	protected ClassFilter getClassFilter()
+	protected Predicate<String> getClassFilter()
 	{
 		// default is to allow nothing!
-		return new ClassFilter()
-		{
-			@Override
-			public boolean exposeToScripts(String name)
-			{
-				return false;
-			}
-		};
+		return name -> false;
 	}
 
 	/**
-	 * Gets the writer to which print outputs are going to be written to
+	 * Gets the stream to which print outputs are going to be written to
 	 * 
-	 * the default is to use {@link NullWriter}
+	 * the default is to use {@link NullOutputStream}
 	 * 
-	 * @return the writer for output
+	 * @return the stream for output
 	 */
-	protected Writer getWriter()
+	protected OutputStream getOutputStream()
 	{
-		return new NullWriter();
+		return new NullOutputStream();
 	}
 
 	/**
-	 * Gets the writer to which error messages are going to be written to
+	 * Gets the stream to which error messages are going to be written to
 	 * 
-	 * the default is to use {@link NullWriter}
+	 * the default is to use {@link NullOutputStream}
 	 * 
-	 * @return the error writer
+	 * @return the stream for errors
 	 */
-	protected Writer getErrorWriter()
+	protected OutputStream getErrorStream()
 	{
-		return new NullWriter();
+		return new NullOutputStream();
 	}
 
 	/**

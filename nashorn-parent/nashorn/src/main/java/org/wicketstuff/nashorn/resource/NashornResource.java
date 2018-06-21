@@ -18,22 +18,23 @@ package org.wicketstuff.nashorn.resource;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Writer;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
-import javax.script.Bindings;
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.NullWriter;
+import org.apache.commons.io.output.NullOutputStream;
 import org.apache.wicket.WicketRuntimeException;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.request.resource.AbstractResource;
 import org.apache.wicket.request.resource.PartWriterCallback;
 
-import jdk.nashorn.api.scripting.ClassFilter;
+import org.graalvm.polyglot.Value;
 
 /**
  * A nashorn resource to execute java script on server side.<br>
@@ -109,11 +110,10 @@ public class NashornResource extends AbstractResource
 			}
 			String safeScript = ensureSafetyScript(script, attributes);
 			NashornScriptCallable nashornScriptCallable = new NashornScriptCallable(safeScript,
-				attributes, getClassFilter(), getWriter(), getErrorWriter())
+				attributes, getClassFilter(), getOutputStream(), getErrorStream())
 			{
 				@Override
-				protected void setup(Attributes attributes, Bindings bindings)
-				{
+				protected void setup(Attributes attributes, Value bindings)	{
 					NashornResource.this.setup(attributes, bindings);
 				}
 			};
@@ -155,24 +155,17 @@ public class NashornResource extends AbstractResource
 	 */
 	private String ensureSafetyScript(String script, Attributes attributes) throws Exception
 	{
-		ClassFilter classFilter = new ClassFilter()
-		{
-			@Override
-			public boolean exposeToScripts(String arg0)
-			{
-				return true;
-			}
-		};
+		Predicate<String> classFilter = name -> true;
 		NashornScriptCallable nashornScriptCallable = new NashornScriptCallable(
 			getScriptByName(NashornResource.class.getSimpleName() + ".js"), attributes, classFilter,
-			getWriter(), getErrorWriter())
+			getOutputStream(), getErrorStream())
 		{
 			@Override
-			protected void setup(Attributes attributes, Bindings bindings)
+			protected void setup(Attributes attributes, Value bindings)
 			{
-				bindings.put("script", script);
-				bindings.put("debug", isDebug());
-				bindings.put("debug_log_prefix", NashornResource.class.getSimpleName() + " - ");
+				bindings.putMember("script", script);
+				bindings.putMember("debug", isDebug());
+				bindings.putMember("debug_log_prefix", NashornResource.class.getSimpleName() + " - ");
 			}
 		};
 		return executeScript(nashornScriptCallable, false).toString();
@@ -209,14 +202,14 @@ public class NashornResource extends AbstractResource
 	 * @return the script result
 	 * @throws Exception
 	 */
-	private Object executeScript(NashornScriptCallable executeScript, boolean watch)
+	private Value executeScript(NashornScriptCallable executeScript, boolean watch)
 		throws Exception
 	{
-		Future<Object> scriptTask = scheduledExecutorService.submit(executeScript);
+		Future<Value> scriptTask = scheduledExecutorService.submit(executeScript);
 		if (watch && waitUnit != null)
 		{
 			scheduledExecutorService.execute(new NashornMemoryWatcher(executeScript, scriptTask,
-				wait, waitUnit, maxScriptMemorySize, isDebug(), getErrorWriter()));
+				wait, waitUnit, maxScriptMemorySize, isDebug(), new OutputStreamWriter(getErrorStream())));
 		}
 		scheduledExecutorService.schedule(() -> {
 			scriptTask.cancel(true);
@@ -244,7 +237,7 @@ public class NashornResource extends AbstractResource
 	 * @param bindings
 	 *            the bindings to add java objects to
 	 */
-	protected void setup(Attributes attributes, Bindings bindings)
+	protected void setup(Attributes attributes, Value bindings)
 	{
 		// NOOP
 	}
@@ -254,41 +247,32 @@ public class NashornResource extends AbstractResource
 	 * 
 	 * @return the class filter to apply to the scripting engine
 	 */
-	protected ClassFilter getClassFilter()
+	protected Predicate<String> getClassFilter()
 	{
 		// default is to allow nothing!
-		return new ClassFilter()
-		{
-			@Override
-			public boolean exposeToScripts(String name)
-			{
-				return false;
-			}
-		};
+		return name -> false;
 	}
 
 	/**
-	 * Gets the writer to which print outputs are going to be written to
+	 * Gets the stream to which print outputs are going to be written to
 	 * 
-	 * the default is to use {@link NullWriter}
+	 * the default is to use {@link NullOutputStream}
 	 * 
-	 * @return the writer for output
+	 * @return the output stream
 	 */
-	protected Writer getWriter()
-	{
-		return new NullWriter();
+	protected OutputStream getOutputStream() {
+		return new NullOutputStream();
 	}
 
 	/**
-	 * Gets the writer to which error messages are going to be written to
+	 * Gets the stream to which error messages are going to be written to
 	 * 
-	 * the default is to use {@link NullWriter}
+	 * the default is to use {@link NullOutputStream}
 	 * 
-	 * @return the error writer
+	 * @return the error output stream
 	 */
-	protected Writer getErrorWriter()
-	{
-		return new NullWriter();
+	protected OutputStream getErrorStream() {
+		return new NullOutputStream();
 	}
 
 	/**

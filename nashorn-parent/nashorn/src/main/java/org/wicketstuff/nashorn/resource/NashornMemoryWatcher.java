@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 
 import com.sun.management.ThreadMXBean;
 
+import org.graalvm.polyglot.Value;
+
 /**
  * The memory watcher is used to detect memory leaks. If the check interval is to low a high cpu
  * impact is the consequence. if it is to high a program might swallow to much memory and a oom
@@ -41,7 +43,7 @@ public class NashornMemoryWatcher implements Runnable
 
 	private NashornScriptCallable nashornScriptCallable;
 
-	private Future<Object> scriptTask;
+	private Future<Value> scriptTask;
 
 	private long wait;
 
@@ -72,7 +74,7 @@ public class NashornMemoryWatcher implements Runnable
 	 *            the error writer to output some information
 	 */
 	public NashornMemoryWatcher(final NashornScriptCallable nashornScriptCallable,
-		final Future<Object> scriptTask, long wait, TimeUnit unit, long maxMemoryUsage,
+		final Future<Value> scriptTask, long wait, TimeUnit unit, long maxMemoryUsage,
 		boolean debug, Writer errorWriter)
 	{
 		this.threadMXBean = (ThreadMXBean)ManagementFactory.getThreadMXBean();

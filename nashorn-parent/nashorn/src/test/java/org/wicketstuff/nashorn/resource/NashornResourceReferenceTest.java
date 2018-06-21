@@ -16,14 +16,10 @@
  */
 package org.wicketstuff.nashorn.resource;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
-import javax.script.Bindings;
 import javax.servlet.ReadListener;
 import javax.servlet.ServletInputStream;
 
@@ -34,6 +30,7 @@ import org.apache.wicket.util.tester.WicketTester;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.graalvm.polyglot.Value;
 
 /**
  * Tests java script remote invocation
@@ -69,21 +66,21 @@ public class NashornResourceReferenceTest extends WicketTestCase
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			protected void setup(Attributes attributes, Bindings bindings)
+			protected void setup(Attributes attributes, Value bindings)
 			{
-				bindings.put("serverValue", 1);
+				bindings.putMember("serverValue", 1);
 			}
 
 			@Override
-			protected Writer getWriter()
+			protected OutputStream getOutputStream()
 			{
-				return new BufferedWriter(new OutputStreamWriter(System.out));
+				return System.out;
 			}
 
 			@Override
-			protected Writer getErrorWriter()
+			protected OutputStream getErrorStream()
 			{
-				return new BufferedWriter(new OutputStreamWriter(System.out));
+				return System.out;
 			}
 
 			@Override

@@ -1,16 +1,14 @@
 package org.wicketstuff.nashorn.resource.app;
 
-import java.io.BufferedWriter;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.OutputStream;
 import java.util.concurrent.TimeUnit;
-
-import javax.script.Bindings;
 
 import org.apache.wicket.Page;
 import org.apache.wicket.protocol.http.WebApplication;
 import org.apache.wicket.request.resource.IResource.Attributes;
 import org.wicketstuff.nashorn.resource.NashornResourceReference;
+
+import org.graalvm.polyglot.Value;
 
 public class NashornApplication extends WebApplication
 {
@@ -34,21 +32,21 @@ public class NashornApplication extends WebApplication
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			protected void setup(Attributes attributes, Bindings bindings)
+			protected void setup(Attributes attributes, Value bindings)
 			{
-				bindings.put("nashornObject", nashornObject);
+				bindings.putMember("nashornObject", nashornObject);
 			}
 
 			@Override
-			protected Writer getWriter()
+			protected OutputStream getOutputStream()
 			{
-				return new BufferedWriter(new OutputStreamWriter(System.out));
+				return System.out;
 			}
 
 			@Override
-			protected Writer getErrorWriter()
+			protected OutputStream getErrorStream()
 			{
-				return new BufferedWriter(new OutputStreamWriter(System.out));
+				return System.out;
 			}
 
 			@Override

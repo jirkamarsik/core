@@ -16,16 +16,14 @@
  */
 package org.wicketstuff.nashorn.resource;
 
-import java.io.StringReader;
-import java.io.Writer;
+import java.io.OutputStream;
 import java.util.concurrent.Callable;
-
-import javax.script.*;
+import java.util.function.Predicate;
 
 import org.apache.wicket.request.resource.IResource.Attributes;
 
-import jdk.nashorn.api.scripting.ClassFilter;
-import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 /**
  * The script callable setup the script environment and evaluates the given script. If the script is
@@ -36,18 +34,18 @@ import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
  *
  */
 @SuppressWarnings({ "restriction" })
-public class NashornScriptCallable implements Callable<Object>
+public class NashornScriptCallable implements Callable<Value>
 {
 
 	private String script;
 
 	private Attributes attributes;
 
-	private ClassFilter classFilter;
+	private Predicate<String> classFilter;
 
-	private Writer writer;
+	private OutputStream outputStream;
 
-	private Writer errorWriter;
+	private OutputStream errorStream;
 
 	private volatile long threadId = -1;
 
@@ -60,46 +58,37 @@ public class NashornScriptCallable implements Callable<Object>
 	 *            the attributes to
 	 * @param classFilter
 	 *            the class filter to be applied
-	 * @param writer
-	 *            the writer to output script prints
-	 * @param errorWriter
-	 *            the writer to output errors
+	 * @param outputStream
+	 *            the stream to output script prints
+	 * @param errorStream
+	 *            the stream to output errors
 	 */
-	public NashornScriptCallable(String script, Attributes attributes, ClassFilter classFilter,
-		Writer writer, Writer errorWriter)
+	public NashornScriptCallable(String script, Attributes attributes, Predicate<String> classFilter,
+		OutputStream outputStream, OutputStream errorStream)
 	{
 		this.script = script;
 		this.attributes = attributes;
 		this.classFilter = classFilter;
-		this.writer = writer;
-		this.errorWriter = errorWriter;
+		this.outputStream = outputStream;
+		this.errorStream = errorStream;
 	}
 
 	@Override
-	public Object call() throws Exception
+	public Value call() throws Exception
 	{
 		enableSecurity();
-		ScriptEngine scriptEngine = null;
-		for (ScriptEngineFactory scriptEngineFactory : new ScriptEngineManager().getEngineFactories()) {
-			if (scriptEngineFactory.getEngineName().equals("Graal.js")) {
-				scriptEngine = scriptEngineFactory.getScriptEngine();
-				break;
-			}
-		}
-		if (scriptEngine == null) {
-			scriptEngine = new NashornScriptEngineFactory()
-					.getScriptEngine(getClassFilter());
-		}
-		Bindings bindings = scriptEngine.createBindings();
-		SimpleScriptContext scriptContext = new SimpleScriptContext();
-		scriptContext.setWriter(getWriter());
-		scriptContext.setErrorWriter(getErrorWriter());
+		Context context = Context.newBuilder("js")
+				.allowHostAccess(true)
+				.hostClassFilter(classFilter)
+				.out(getOutputStream())
+				.err(getErrorStream())
+				.build();
+		Value bindings = context.getBindings("js");
 		setup(getAttributes(), bindings);
 		Thread thread = Thread.currentThread();
 		threadId = thread.getId();
-		bindings.put("nashornResourceReferenceScriptExecutionThread", thread);
-		scriptContext.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
-		return scriptEngine.eval(new StringReader(getScript()), scriptContext);
+		bindings.putMember("nashornResourceReferenceScriptExecutionThread", thread);
+		return context.eval("js", getScript());
 	}
 
 	/**
@@ -122,7 +111,7 @@ public class NashornScriptCallable implements Callable<Object>
 	 * @param bindings
 	 *            the bindings to add java objects to
 	 */
-	protected void setup(Attributes attributes, Bindings bindings)
+	protected void setup(Attributes attributes, Value bindings)
 	{
 		// NOOP
 	}
@@ -152,7 +141,7 @@ public class NashornScriptCallable implements Callable<Object>
 	 * 
 	 * @return the class filter
 	 */
-	public ClassFilter getClassFilter()
+	public Predicate<String> getClassFilter()
 	{
 		return classFilter;
 	}
@@ -162,9 +151,9 @@ public class NashornScriptCallable implements Callable<Object>
 	 * 
 	 * @return the writer
 	 */
-	public Writer getWriter()
+	public OutputStream getOutputStream()
 	{
-		return writer;
+		return outputStream;
 	}
 
 	/**
@@ -172,9 +161,9 @@ public class NashornScriptCallable implements Callable<Object>
 	 * 
 	 * @return the error writer
 	 */
-	public Writer getErrorWriter()
+	public OutputStream getErrorStream()
 	{
-		return errorWriter;
+		return errorStream;
 	}
 
 	/**

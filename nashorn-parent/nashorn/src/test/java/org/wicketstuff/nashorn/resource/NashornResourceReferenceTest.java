@@ -88,6 +88,11 @@ public class NashornResourceReferenceTest extends WicketTestCase
 			{
 				return true;
 			}
+
+			@Override
+			protected Predicate<String> getClassFilter() {
+				return name -> name.equals("java.lang.Math");
+			}
 		};
 		try
 		{

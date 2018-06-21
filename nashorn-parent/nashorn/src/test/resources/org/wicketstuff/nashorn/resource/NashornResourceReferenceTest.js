@@ -1,3 +1,5 @@
+const javaMath = Java.type('java.lang.Math');
+
 x = 0;
 while (x < 1) {
 	print("while" + x);
@@ -15,7 +17,7 @@ do {
 } while (y < 1)
 
 function userDefinedFunction() {
-	return 3 + serverValue;
+	return javaMath.floor(javaMath.PI) + serverValue;
 }
 
 userDefinedFunction();
